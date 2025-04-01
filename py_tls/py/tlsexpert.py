@@ -78,7 +78,7 @@ if __name__ == '__main__':
             print(f"\nMaking request at {current_time}")
             
             res = request(url, "GET", "Chrome_83", "", "", headers, 5000, True)
-            
+            print(res)
             if 'status_code' in res:
                 print(f"Status Code: {res['status_code']}")
             
