@@ -187,6 +187,9 @@ if __name__ == '__main__':
                             print(f"Post time: {post_time}")
                             print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
                             print(f"Has card: {'card' in post}")
+                            if 'card' in post:
+                                print(f"Card type: {post['card'].get('type')}")
+                                print(f"Card URL: {post['card'].get('url')}")
                             print(f"Has media: {'media_attachments' in post and len(post['media_attachments']) > 0}")
                             print(f"Already seen: {post_id in seen_posts}")
                             
@@ -216,10 +219,17 @@ if __name__ == '__main__':
                                     message_text += f"Title: {card.get('title', 'N/A')}\n"
                                     message_text += f"Description: {card.get('description', 'N/A')}\n"
                                     message_text += f"URL: {card.get('url', 'N/A')}\n"
+                                    
+                                    # If there's an image in the card, use it as media
+                                    if card.get('image'):
+                                        media_url = card.get('image')
+                                    else:
+                                        media_url = None
+                                else:
+                                    media_url = None
                                 
-                                # Handle media attachments
-                                media_url = None
-                                if media_attachments:
+                                # Handle media attachments if no card image
+                                if not media_url and media_attachments:
                                     for media in media_attachments:
                                         if media.get('type') == 'image':
                                             media_url = media.get('url')
