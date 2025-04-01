@@ -178,9 +178,17 @@ if __name__ == '__main__':
                 try:
                     posts = json.loads(res['body'])
                     if isinstance(posts, list):
+                        print(f"\nProcessing {len(posts)} posts...")
                         for post in posts:
                             post_id = post.get('id')
                             post_time = post.get('created_at')
+                            
+                            print(f"\nChecking post {post_id}...")
+                            print(f"Post time: {post_time}")
+                            print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
+                            print(f"Has card: {'card' in post}")
+                            print(f"Has media: {'media_attachments' in post and len(post['media_attachments']) > 0}")
+                            print(f"Already seen: {post_id in seen_posts}")
                             
                             if post_id and post_id not in seen_posts:
                                 print(f"\nNew post detected!")
@@ -227,6 +235,8 @@ if __name__ == '__main__':
                                     print("Failed to send to Telegram")
                                 
                                 seen_posts.add(post_id)
+                            else:
+                                print("Post already seen or invalid ID, skipping...")
                 except json.JSONDecodeError:
                     print("Could not parse response body as JSON")
             
