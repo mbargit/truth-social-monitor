@@ -78,21 +78,9 @@ if __name__ == '__main__':
             print(f"\nMaking request at {current_time}")
             
             res = request(url, "GET", "Chrome_83", "", "", headers, 5000, True)
-            print(res)
-            if 'status_code' in res:
+            if 'status' in res:
                 print(f"Status Code: {res['status_code']}")
-            
-            if 'body' in res and res['body']:
-                try:
-                    data = json.loads(res['body'])
-                    if isinstance(data, list):
-                        print("\nMessage timestamps:")
-                        for msg in data:
-                            if 'created_at' in msg:
-                                print(f"- {msg['created_at']}")
-                except json.JSONDecodeError:
-                    print("Could not parse response body as JSON")
-            
+          
             print("\nWaiting 5 seconds before next request...")
             time.sleep(2)
             
