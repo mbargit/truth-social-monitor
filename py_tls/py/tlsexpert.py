@@ -183,7 +183,13 @@ def process_post(post, current_time):
                     media_url = media.get('url')
                     break
                 elif media.get('type') == 'video':
-                    media_url = media.get('url')
+                    # For videos, include both the video URL and preview image
+                    video_url = media.get('url')
+                    preview_url = media.get('preview_url')
+                    if video_url:
+                        message_text += f"\n🎥 Video: {video_url}\n"
+                    if preview_url:
+                        media_url = preview_url
                     break
         
         # Send to Telegram
