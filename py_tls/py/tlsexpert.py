@@ -122,6 +122,65 @@ def extract_urls_from_html(html_content):
             urls.append(link['href'])
     return urls
 
+def process_post(post, current_time):
+    """Process a single post and send it to Telegram"""
+    post_id = post.get('id')
+    post_time = post.get('created_at')
+    
+    print(f"\nProcessing post {post_id}...")
+    print(f"Post time: {post_time}")
+    print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
+    print(f"Has card: {'card' in post}")
+    if 'card' in post:
+        print(f"Card type: {post['card'].get('type')}")
+        print(f"Card URL: {post['card'].get('url')}")
+    print(f"Has media: {'media_attachments' in post and len(post['media_attachments']) > 0}")
+    
+    # Prepare message content
+    content = clean_html(post.get('content', ''))
+    media_attachments = post.get('media_attachments', [])
+    card = post.get('card')
+    
+    # Create message text
+    message_text = f"🆕 New Post Detected!\n\n"
+    message_text += f"Time: {post_time}\n"
+    message_text += f"ID: {post_id}\n"
+    
+    # Handle content
+    if content:
+        message_text += f"\nContent:\n{content}\n"
+    
+    # Handle card (link preview)
+    if card:
+        message_text += f"\n🔗 Link Preview:\n"
+        message_text += f"Title: {card.get('title', 'N/A')}\n"
+        message_text += f"Description: {card.get('description', 'N/A')}\n"
+        message_text += f"URL: {card.get('url', 'N/A')}\n"
+        
+        # If there's an image in the card, use it as media
+        if card.get('image'):
+            media_url = card.get('image')
+        else:
+            media_url = None
+    else:
+        media_url = None
+    
+    # Handle media attachments if no card image
+    if not media_url and media_attachments:
+        for media in media_attachments:
+            if media.get('type') == 'image':
+                media_url = media.get('url')
+                break
+            elif media.get('type') == 'video':
+                media_url = media.get('url')
+                break
+    
+    # Send to Telegram
+    if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
+        print("Successfully sent to Telegram")
+    else:
+        print("Failed to send to Telegram")
+
 if __name__ == '__main__':
     url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
@@ -151,8 +210,8 @@ if __name__ == '__main__':
 
     print(f"Loaded {len(proxies)} proxies")
 
-    # Set to store seen post IDs
-    seen_posts = set()
+    # Store the most recent post ID we've seen
+    last_seen_id = None
     
     while True:
         try:
@@ -177,76 +236,31 @@ if __name__ == '__main__':
             if 'body' in res and res['body']:
                 try:
                     posts = json.loads(res['body'])
-                    if isinstance(posts, list):
+                    if isinstance(posts, list) and posts:
                         print(f"\nProcessing {len(posts)} posts...")
-                        for post in posts:
-                            post_id = post.get('id')
-                            post_time = post.get('created_at')
+                        
+                        # Get the current most recent post ID
+                        current_most_recent_id = posts[0].get('id')
+                        
+                        if last_seen_id is None:
+                            # First run - just store the most recent ID
+                            print(f"First run - storing most recent ID: {current_most_recent_id}")
+                            last_seen_id = current_most_recent_id
+                        elif current_most_recent_id != last_seen_id:
+                            # New posts detected - process all posts up to the last seen ID
+                            print(f"New posts detected! Processing posts from {current_most_recent_id} to {last_seen_id}")
                             
-                            print(f"\nChecking post {post_id}...")
-                            print(f"Post time: {post_time}")
-                            print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
-                            print(f"Has card: {'card' in post}")
-                            if 'card' in post:
-                                print(f"Card type: {post['card'].get('type')}")
-                                print(f"Card URL: {post['card'].get('url')}")
-                            print(f"Has media: {'media_attachments' in post and len(post['media_attachments']) > 0}")
-                            print(f"Already seen: {post_id in seen_posts}")
+                            # Process all posts until we hit the last seen ID
+                            for post in posts:
+                                post_id = post.get('id')
+                                if post_id == last_seen_id:
+                                    break
+                                process_post(post, current_time)
                             
-                            if post_id and post_id not in seen_posts:
-                                print(f"\nNew post detected!")
-                                print(f"Post ID: {post_id}")
-                                print(f"Post Time: {post_time}")
-                                print(f"Current Time: {current_time}")
-                                
-                                # Prepare message content
-                                content = clean_html(post.get('content', ''))
-                                media_attachments = post.get('media_attachments', [])
-                                card = post.get('card')
-                                
-                                # Create message text
-                                message_text = f"🆕 New Post Detected!\n\n"
-                                message_text += f"Time: {post_time}\n"
-                                message_text += f"ID: {post_id}\n"
-                                
-                                # Handle content
-                                if content:
-                                    message_text += f"\nContent:\n{content}\n"
-                                
-                                # Handle card (link preview)
-                                if card:
-                                    message_text += f"\n🔗 Link Preview:\n"
-                                    message_text += f"Title: {card.get('title', 'N/A')}\n"
-                                    message_text += f"Description: {card.get('description', 'N/A')}\n"
-                                    message_text += f"URL: {card.get('url', 'N/A')}\n"
-                                    
-                                    # If there's an image in the card, use it as media
-                                    if card.get('image'):
-                                        media_url = card.get('image')
-                                    else:
-                                        media_url = None
-                                else:
-                                    media_url = None
-                                
-                                # Handle media attachments if no card image
-                                if not media_url and media_attachments:
-                                    for media in media_attachments:
-                                        if media.get('type') == 'image':
-                                            media_url = media.get('url')
-                                            break
-                                        elif media.get('type') == 'video':
-                                            media_url = media.get('url')
-                                            break
-                                
-                                # Send to Telegram
-                                if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
-                                    print("Successfully sent to Telegram")
-                                else:
-                                    print("Failed to send to Telegram")
-                                
-                                seen_posts.add(post_id)
-                            else:
-                                print("Post already seen or invalid ID, skipping...")
+                            # Update the last seen ID
+                            last_seen_id = current_most_recent_id
+                        else:
+                            print("No new posts detected")
                 except json.JSONDecodeError:
                     print("Could not parse response body as JSON")
             
