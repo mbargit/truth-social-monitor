@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
   url = "https://truthsocial.com/api/v1/accounts/107834961460111812/statuses?pinned=true&only_replies=false&with_muted=true"
 
-  res = request(url, "POST", "Chrome_83", "", json.dumps({"x": "xxx"}),  {
+  res = request(url, "GET", "Chrome_83", "", "",  {
             'upgrade-insecure-requests': '1',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
