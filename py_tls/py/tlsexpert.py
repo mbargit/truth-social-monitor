@@ -79,7 +79,7 @@ if __name__ == '__main__':
             
             res = request(url, "GET", "Chrome_83", "", "", headers, 5000, True)
             if 'status' in res:
-                print(f"Status Code: {res['status_code']}")
+                print(f"Status Code: {res['status']}")
           
             print("\nWaiting 5 seconds before next request...")
             time.sleep(2)
