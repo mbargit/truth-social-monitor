@@ -109,9 +109,18 @@ def send_telegram_message(bot_token, chat_id, text, media_url=None):
         return False
 
 def clean_html(html_content):
-    # Remove HTML tags and decode entities
+    # Remove HTML tags but preserve line breaks
     soup = BeautifulSoup(html_content, 'html.parser')
-    return soup.get_text()
+    # Replace <br> and </p> with newlines
+    for br in soup.find_all('br'):
+        br.replace_with('\n')
+    for p in soup.find_all('p'):
+        if p.next_sibling:
+            p.append('\n')
+    text = soup.get_text()
+    # Clean up multiple newlines
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    return text.strip()
 
 def extract_urls_from_html(html_content):
     # Extract URLs from HTML content
