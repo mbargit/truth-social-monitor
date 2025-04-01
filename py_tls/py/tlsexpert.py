@@ -99,8 +99,11 @@ if __name__ == '__main__':
             res = request(url, "GET", "Chrome_83", proxy_url, "", headers, 5000, True)
             if 'status' in res:
                 print(f"Status Code: {res['status']}")
-          
-            print("\nWaiting 2 seconds before next request...")
+                if res['status'] == 7:
+                    print("Status code 7 detected, retrying immediately with different proxy...")
+                    continue  # This will skip the sleep and retry with a new proxy
+            
+            print("\nWaiting 1 second before next request...")
             time.sleep(1)
             
         except Exception as e:
