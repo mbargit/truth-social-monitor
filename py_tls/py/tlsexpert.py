@@ -113,6 +113,15 @@ def clean_html(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     return soup.get_text()
 
+def extract_urls_from_html(html_content):
+    # Extract URLs from HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+    urls = []
+    for link in soup.find_all('a'):
+        if link.get('href'):
+            urls.append(link['href'])
+    return urls
+
 if __name__ == '__main__':
     url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
@@ -182,13 +191,23 @@ if __name__ == '__main__':
                                 # Prepare message content
                                 content = clean_html(post.get('content', ''))
                                 media_attachments = post.get('media_attachments', [])
+                                card = post.get('card')
                                 
                                 # Create message text
                                 message_text = f"🆕 New Post Detected!\n\n"
                                 message_text += f"Time: {post_time}\n"
                                 message_text += f"ID: {post_id}\n"
+                                
+                                # Handle content
                                 if content:
                                     message_text += f"\nContent:\n{content}\n"
+                                
+                                # Handle card (link preview)
+                                if card:
+                                    message_text += f"\n🔗 Link Preview:\n"
+                                    message_text += f"Title: {card.get('title', 'N/A')}\n"
+                                    message_text += f"Description: {card.get('description', 'N/A')}\n"
+                                    message_text += f"URL: {card.get('url', 'N/A')}\n"
                                 
                                 # Handle media attachments
                                 media_url = None
