@@ -62,43 +62,37 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
       value = value.encode('utf-8')
   return json.loads(value.decode())
 
-def send_telegram_message(bot_token, chat_id, text, media_url=None):
+def send_telegram_message(bot_token, chat_id, text, media_url=None, inline_keyboard=None):
     base_url = f"https://api.telegram.org/bot{bot_token}"
+    
+    data = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'HTML'
+    }
     
     if media_url:
         # If there's media, send it as a photo/video
         if media_url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
             endpoint = f"{base_url}/sendPhoto"
-            data = {
-                'chat_id': chat_id,
-                'photo': media_url,
-                'caption': text,
-                'parse_mode': 'HTML'
-            }
+            data['photo'] = media_url
+            data['caption'] = text
         elif media_url.lower().endswith(('.mp4', '.mov', '.avi')):
             endpoint = f"{base_url}/sendVideo"
-            data = {
-                'chat_id': chat_id,
-                'video': media_url,
-                'caption': text,
-                'parse_mode': 'HTML'
-            }
+            data['video'] = media_url
+            data['caption'] = text
         else:
             # If media type is unknown, send as text with link
             endpoint = f"{base_url}/sendMessage"
-            data = {
-                'chat_id': chat_id,
-                'text': f"{text}\n\nMedia: {media_url}",
-                'parse_mode': 'HTML'
-            }
+            data['text'] = f"{text}\n\nMedia: {media_url}"
     else:
-        # If no media, send as text only
         endpoint = f"{base_url}/sendMessage"
-        data = {
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'HTML'
-        }
+    
+    # Add inline keyboard if provided
+    if inline_keyboard:
+        data['reply_markup'] = json.dumps({
+            'inline_keyboard': inline_keyboard
+        })
     
     try:
         response = requests.post(endpoint, data=data)
@@ -192,8 +186,14 @@ def process_post(post, current_time):
                         media_url = preview_url
                     break
         
+        # Create inline keyboard with Truth Social link
+        inline_keyboard = [[{
+            'text': '🔗 View on Truth Social',
+            'url': f'https://truthsocial.com/@trickzy/posts/{post_id}'
+        }]]
+        
         # Send to Telegram
-        if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
+        if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url, inline_keyboard):
             print("Successfully sent to Telegram")
         else:
             print("Failed to send to Telegram")
