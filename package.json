@@ -1,0 +1,15 @@
+{
+  "name": "tls_client",
+  "version": "1.0.0",
+  "description": "Tls client made by Ahülex#5656",
+  "main": "example.js",
+  "scripts": {
+    "start": "set UV_THREADPOOL_SIZE=1024 & node example.js"
+  },
+  "author": "Alexander Lu",
+  "license": "MIT",
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "uuid": "^8.3.2"
+  }
+}
