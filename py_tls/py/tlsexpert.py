@@ -60,7 +60,7 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
   return json.loads(value.decode())
 
 if __name__ == '__main__':
-    url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
     headers = {
         'upgrade-insecure-requests': '1',
@@ -84,6 +84,9 @@ if __name__ == '__main__':
 
     print(f"Loaded {len(proxies)} proxies")
 
+    # Set to store seen post IDs
+    seen_posts = set()
+    
     while True:
         try:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -102,6 +105,25 @@ if __name__ == '__main__':
                 if res['status'] == 7:
                     print("Status code 7 detected, retrying immediately with different proxy...")
                     continue  # This will skip the sleep and retry with a new proxy
+            
+            # Parse the response body if it exists
+            if 'body' in res and res['body']:
+                try:
+                    posts = json.loads(res['body'])
+                    if isinstance(posts, list):
+                        for post in posts:
+                            post_id = post.get('id')
+                            post_time = post.get('created_at')
+                            
+                            if post_id and post_id not in seen_posts:
+                                print(f"\nNew post detected!")
+                                print(f"Post ID: {post_id}")
+                                print(f"Post Time: {post_time}")
+                                print(f"Current Time: {current_time}")
+                                print(f"Content: {post.get('content', '')[:200]}...")  # Print first 200 chars of content
+                                seen_posts.add(post_id)
+                except json.JSONDecodeError:
+                    print("Could not parse response body as JSON")
             
             print("\nWaiting 1 second before next request...")
             time.sleep(1)
