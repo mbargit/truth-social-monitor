@@ -124,62 +124,67 @@ def extract_urls_from_html(html_content):
 
 def process_post(post, current_time):
     """Process a single post and send it to Telegram"""
-    post_id = post.get('id')
-    post_time = post.get('created_at')
-    
-    print(f"\nProcessing post {post_id}...")
-    print(f"Post time: {post_time}")
-    print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
-    print(f"Has card: {'card' in post}")
-    if 'card' in post:
-        print(f"Card type: {post['card'].get('type')}")
-        print(f"Card URL: {post['card'].get('url')}")
-    print(f"Has media: {'media_attachments' in post and len(post['media_attachments']) > 0}")
-    
-    # Prepare message content
-    content = clean_html(post.get('content', ''))
-    media_attachments = post.get('media_attachments', [])
-    card = post.get('card')
-    
-    # Create message text
-    message_text = f"🆕 New Post Detected!\n\n"
-    message_text += f"Time: {post_time}\n"
-    message_text += f"ID: {post_id}\n"
-    
-    # Handle content
-    if content:
-        message_text += f"\nContent:\n{content}\n"
-    
-    # Handle card (link preview)
-    if card:
-        message_text += f"\n🔗 Link Preview:\n"
-        message_text += f"Title: {card.get('title', 'N/A')}\n"
-        message_text += f"Description: {card.get('description', 'N/A')}\n"
-        message_text += f"URL: {card.get('url', 'N/A')}\n"
+    try:
+        post_id = post.get('id')
+        post_time = post.get('created_at')
         
-        # If there's an image in the card, use it as media
-        if card.get('image'):
-            media_url = card.get('image')
-        else:
-            media_url = None
-    else:
+        print(f"\nProcessing post {post_id}...")
+        print(f"Post time: {post_time}")
+        print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
+        
+        # Safely check for card data
+        card = post.get('card')
+        print(f"Has card: {card is not None}")
+        if card:
+            print(f"Card type: {card.get('type', 'unknown')}")
+            print(f"Card URL: {card.get('url', 'unknown')}")
+        
+        print(f"Has media: {'media_attachments' in post and len(post.get('media_attachments', [])) > 0}")
+        
+        # Prepare message content
+        content = clean_html(post.get('content', ''))
+        media_attachments = post.get('media_attachments', [])
+        
+        # Create message text
+        message_text = f"🆕 New Post Detected!\n\n"
+        message_text += f"Time: {post_time}\n"
+        message_text += f"ID: {post_id}\n"
+        
+        # Handle content
+        if content:
+            message_text += f"\nContent:\n{content}\n"
+        
+        # Handle card (link preview)
         media_url = None
-    
-    # Handle media attachments if no card image
-    if not media_url and media_attachments:
-        for media in media_attachments:
-            if media.get('type') == 'image':
-                media_url = media.get('url')
-                break
-            elif media.get('type') == 'video':
-                media_url = media.get('url')
-                break
-    
-    # Send to Telegram
-    if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
-        print("Successfully sent to Telegram")
-    else:
-        print("Failed to send to Telegram")
+        if card:
+            message_text += f"\n🔗 Link Preview:\n"
+            message_text += f"Title: {card.get('title', 'N/A')}\n"
+            message_text += f"Description: {card.get('description', 'N/A')}\n"
+            message_text += f"URL: {card.get('url', 'N/A')}\n"
+            
+            # If there's an image in the card, use it as media
+            if card.get('image'):
+                media_url = card.get('image')
+        
+        # Handle media attachments if no card image
+        if not media_url and media_attachments:
+            for media in media_attachments:
+                if media.get('type') == 'image':
+                    media_url = media.get('url')
+                    break
+                elif media.get('type') == 'video':
+                    media_url = media.get('url')
+                    break
+        
+        # Send to Telegram
+        if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
+            print("Successfully sent to Telegram")
+        else:
+            print("Failed to send to Telegram")
+            
+    except Exception as e:
+        print(f"Error processing post: {str(e)}")
+        print(f"Post data: {json.dumps(post, indent=2)}")
 
 if __name__ == '__main__':
     url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
