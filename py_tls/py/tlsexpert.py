@@ -2,6 +2,8 @@ import ctypes
 import os
 import json
 import platform
+import time
+from datetime import datetime
 
 # Set the name of our shared library
 lib_name = 'tlsexpert'
@@ -57,17 +59,43 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
   return json.loads(value.decode())
 
 if __name__ == '__main__':
+    url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    
+    headers = {
+        'upgrade-insecure-requests': '1',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'sec-fetch-site': 'none',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-dest': 'document',
+        'accept-language': 'en-US,en;q=0.9',
+        'accept-encoding': 'br, gzip, deflate',
+    }
 
-  url = "https://truthsocial.com/api/v1/accounts/107834961460111812/statuses?pinned=true&only_replies=false&with_muted=true"
-
-  res = request(url, "GET", "Chrome_83", "", "",  {
-            'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            'sec-fetch-site': 'none',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-dest': 'document',
-            'accept-language': 'en-US,en;q=0.9',
-            'accept-encoding': 'br, gzip, deflate',
-            }, 5000, True)
-  print(res)
+    while True:
+        try:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"\nMaking request at {current_time}")
+            
+            res = request(url, "GET", "Chrome_83", "", "", headers, 5000, True)
+            
+            if 'status_code' in res:
+                print(f"Status Code: {res['status_code']}")
+            
+            if 'body' in res and res['body']:
+                try:
+                    data = json.loads(res['body'])
+                    if isinstance(data, list):
+                        print("\nMessage timestamps:")
+                        for msg in data:
+                            if 'created_at' in msg:
+                                print(f"- {msg['created_at']}")
+                except json.JSONDecodeError:
+                    print("Could not parse response body as JSON")
+            
+            print("\nWaiting 5 seconds before next request...")
+            time.sleep(5)
+            
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            time.sleep(5)  # Still wait 5 seconds even if there's an error
