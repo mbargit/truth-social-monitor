@@ -147,17 +147,18 @@ def process_post(post, current_time):
         
         # Create message text
         message_text = f"🆕 New Post Detected!\n\n"
-        message_text += f"Time: {post_time}\n"
-        message_text += f"ID: {post_id}\n"
         
         # Handle content
         if content:
-            message_text += f"\nContent:\n{content}\n"
+            message_text += f"{content}\n"
         
         # Handle card (link preview)
         media_url = None
         if card:
-            message_text += f"\n🔗 Link Preview:\n"
+            # If there's content and a link, add a separator
+            if content:
+                message_text += "\n"
+            message_text += f"🔗 Link Preview:\n"
             message_text += f"Title: {card.get('title', 'N/A')}\n"
             message_text += f"Description: {card.get('description', 'N/A')}\n"
             message_text += f"URL: {card.get('url', 'N/A')}\n"
