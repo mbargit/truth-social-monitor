@@ -246,7 +246,7 @@ if __name__ == '__main__':
     # Proxy rotation state
     current_proxy_index = -1  # -1 means no proxy
     last_proxy_switch_time = 0
-    PROXY_TIMEOUT = 180  # 3 minutes in seconds
+    PROXY_TIMEOUT = 300  # 3 minutes in seconds
     
     while True:
         try:
