@@ -243,24 +243,49 @@ if __name__ == '__main__':
     # Store the most recent post ID we've seen
     last_seen_id = None
     
+    # Proxy rotation state
+    current_proxy_index = -1  # -1 means no proxy
+    last_proxy_switch_time = 0
+    PROXY_TIMEOUT = 180  # 3 minutes in seconds
+    
     while True:
         try:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # Select a random proxy
-            proxy = random.choice(proxies)
-            host, port, username, password = proxy.split(':')
-            proxy_url = f"http://{username}:{password}@{host}:{port}"
+            # Determine if we should switch back to no proxy
+            if current_proxy_index >= 0 and time.time() - last_proxy_switch_time >= PROXY_TIMEOUT:
+                print("\nSwitching back to no proxy after timeout...")
+                current_proxy_index = -1
             
-            print(f"\nMaking request at {current_time}")
-            print(f"Using proxy: {host}:{port}")
+            # Prepare proxy URL if needed
+            proxy_url = ""
+            if current_proxy_index >= 0:
+                proxy = proxies[current_proxy_index]
+                host, port, username, password = proxy.split(':')
+                proxy_url = f"http://{username}:{password}@{host}:{port}"
+                print(f"\nUsing proxy: {host}:{port}")
+            else:
+                print("\nUsing no proxy")
+            
+            print(f"Making request at {current_time}")
             
             res = request(url, "GET", "Chrome_83", proxy_url, "", headers, 5000, True)
             if 'status' in res:
                 print(f"Status Code: {res['status']}")
+                
+                # Handle rate limiting (429)
+                if res['status'] == 429:
+                    print("Rate limited detected, switching to next proxy...")
+                    current_proxy_index = (current_proxy_index + 1) % len(proxies)
+                    last_proxy_switch_time = time.time()
+                    continue  # Retry immediately with new proxy
+                
+                # Handle other error status codes
                 if res['status'] == 7:
-                    print("Status code 7 detected, retrying immediately with different proxy...")
-                    continue  # This will skip the sleep and retry with a new proxy
+                    print("Status code 7 detected, switching to next proxy...")
+                    current_proxy_index = (current_proxy_index + 1) % len(proxies)
+                    last_proxy_switch_time = time.time()
+                    continue  # Retry immediately with new proxy
             
             # Parse the response body if it exists
             if 'body' in res and res['body']:
