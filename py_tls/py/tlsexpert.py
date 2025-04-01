@@ -4,6 +4,7 @@ import json
 import platform
 import time
 from datetime import datetime
+import random
 
 # Set the name of our shared library
 lib_name = 'tlsexpert'
@@ -72,12 +73,30 @@ if __name__ == '__main__':
         'accept-encoding': 'br, gzip, deflate',
     }
 
+    # Read proxies from file
+    proxy_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'proxies.txt')
+    with open(proxy_file, 'r') as f:
+        proxies = [line.strip() for line in f if line.strip()]
+
+    if not proxies:
+        print("No proxies found in proxies.txt")
+        exit(1)
+
+    print(f"Loaded {len(proxies)} proxies")
+
     while True:
         try:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"\nMaking request at {current_time}")
             
-            res = request(url, "GET", "Chrome_83", "", "", headers, 5000, True)
+            # Select a random proxy
+            proxy = random.choice(proxies)
+            host, port, username, password = proxy.split(':')
+            proxy_url = f"http://{username}:{password}@{host}:{port}"
+            
+            print(f"\nMaking request at {current_time}")
+            print(f"Using proxy: {host}:{port}")
+            
+            res = request(url, "GET", "Chrome_83", proxy_url, "", headers, 5000, True)
             if 'status' in res:
                 print(f"Status Code: {res['status']}")
           
