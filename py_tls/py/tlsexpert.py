@@ -100,8 +100,8 @@ if __name__ == '__main__':
             if 'status' in res:
                 print(f"Status Code: {res['status']}")
           
-            print("\nWaiting 5 seconds before next request...")
-            time.sleep(2)
+            print("\nWaiting 2 seconds before next request...")
+            time.sleep(1)
             
         except Exception as e:
             print(f"Error occurred: {str(e)}")
