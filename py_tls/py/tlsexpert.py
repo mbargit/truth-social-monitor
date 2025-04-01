@@ -58,7 +58,7 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
 
 if __name__ == '__main__':
 
-  url = "https://www.jdsports.co.uk/cart/"
+  url = "https://truthsocial.com/api/v1/accounts/107834961460111812/statuses?pinned=true&only_replies=false&with_muted=true"
 
   res = request(url, "POST", "Chrome_83", "", json.dumps({"x": "xxx"}),  {
             'upgrade-insecure-requests': '1',
