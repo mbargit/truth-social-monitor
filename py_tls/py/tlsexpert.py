@@ -5,6 +5,9 @@ import platform
 import time
 from datetime import datetime
 import random
+import requests
+from bs4 import BeautifulSoup
+import re
 
 # Set the name of our shared library
 lib_name = 'tlsexpert'
@@ -59,8 +62,63 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
       value = value.encode('utf-8')
   return json.loads(value.decode())
 
+def send_telegram_message(bot_token, chat_id, text, media_url=None):
+    base_url = f"https://api.telegram.org/bot{bot_token}"
+    
+    if media_url:
+        # If there's media, send it as a photo/video
+        if media_url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+            endpoint = f"{base_url}/sendPhoto"
+            data = {
+                'chat_id': chat_id,
+                'photo': media_url,
+                'caption': text,
+                'parse_mode': 'HTML'
+            }
+        elif media_url.lower().endswith(('.mp4', '.mov', '.avi')):
+            endpoint = f"{base_url}/sendVideo"
+            data = {
+                'chat_id': chat_id,
+                'video': media_url,
+                'caption': text,
+                'parse_mode': 'HTML'
+            }
+        else:
+            # If media type is unknown, send as text with link
+            endpoint = f"{base_url}/sendMessage"
+            data = {
+                'chat_id': chat_id,
+                'text': f"{text}\n\nMedia: {media_url}",
+                'parse_mode': 'HTML'
+            }
+    else:
+        # If no media, send as text only
+        endpoint = f"{base_url}/sendMessage"
+        data = {
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': 'HTML'
+        }
+    
+    try:
+        response = requests.post(endpoint, data=data)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Error sending Telegram message: {str(e)}")
+        return False
+
+def clean_html(html_content):
+    # Remove HTML tags and decode entities
+    soup = BeautifulSoup(html_content, 'html.parser')
+    return soup.get_text()
+
 if __name__ == '__main__':
     url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    
+    # Telegram configuration
+    TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"  # Replace with your bot token
+    TELEGRAM_CHAT_ID = "-1002393083645"      # Replace with your chat ID
     
     headers = {
         'upgrade-insecure-requests': '1',
@@ -120,7 +178,35 @@ if __name__ == '__main__':
                                 print(f"Post ID: {post_id}")
                                 print(f"Post Time: {post_time}")
                                 print(f"Current Time: {current_time}")
-                                print(f"Content: {post.get('content', '')[:200]}...")  # Print first 200 chars of content
+                                
+                                # Prepare message content
+                                content = clean_html(post.get('content', ''))
+                                media_attachments = post.get('media_attachments', [])
+                                
+                                # Create message text
+                                message_text = f"🆕 New Post Detected!\n\n"
+                                message_text += f"Time: {post_time}\n"
+                                message_text += f"ID: {post_id}\n"
+                                if content:
+                                    message_text += f"\nContent:\n{content}\n"
+                                
+                                # Handle media attachments
+                                media_url = None
+                                if media_attachments:
+                                    for media in media_attachments:
+                                        if media.get('type') == 'image':
+                                            media_url = media.get('url')
+                                            break
+                                        elif media.get('type') == 'video':
+                                            media_url = media.get('url')
+                                            break
+                                
+                                # Send to Telegram
+                                if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url):
+                                    print("Successfully sent to Telegram")
+                                else:
+                                    print("Failed to send to Telegram")
+                                
                                 seen_posts.add(post_id)
                 except json.JSONDecodeError:
                     print("Could not parse response body as JSON")
