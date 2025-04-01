@@ -148,8 +148,11 @@ def process_post(post, current_time):
         content = clean_html(post.get('content', ''))
         media_attachments = post.get('media_attachments', [])
         
-        # Create message text
-        message_text = f"🆕 New Post Detected!\n\n"
+        # Create message text with timestamps
+        message_text = f"🆕 New Post Detected!\n"
+        message_text += f"Post created: {post_time}\n"
+        message_text += f"Alert sent: {current_time}\n"
+        message_text += f"Delay: {datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S') - datetime.strptime(post_time.split('.')[0], '%Y-%m-%dT%H:%M:%S')}\n\n"
         
         # Handle content
         if content:
@@ -203,7 +206,7 @@ def process_post(post, current_time):
         print(f"Post data: {json.dumps(post, indent=2)}")
 
 if __name__ == '__main__':
-    url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
     # Telegram configuration
     TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"  # Replace with your bot token
