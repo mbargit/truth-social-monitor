@@ -20,8 +20,8 @@ lib_name = 'tlsexpert'
 TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"
 TELEGRAM_CHAT_IDS = [
     "-1002393083645",  # First chat ID
-    # "-1002589438564",  # Second chat ID (replace with your actual chat ID)
-    # "-1002314755584"   # Third chat ID (replace with your actual chat ID)
+    "-1002589438564",  # Second chat ID (replace with your actual chat ID)
+    "-1002314755584"   # Third chat ID (replace with your actual chat ID)
 ]
 
 VALID_CLIENT_HELLOS = [
