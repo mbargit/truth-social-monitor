@@ -8,6 +8,10 @@ import random
 import requests
 from bs4 import BeautifulSoup
 import re
+import sys
+import signal
+import subprocess
+import atexit
 
 # Set the name of our shared library
 lib_name = 'tlsexpert'
@@ -205,12 +209,24 @@ def process_post(post, current_time):
         print(f"Error processing post: {str(e)}")
         print(f"Post data: {json.dumps(post, indent=2)}")
 
-if __name__ == '__main__':
+def signal_handler(signum, frame):
+    """Handle termination signals gracefully"""
+    print(f"\nReceived signal {signum}. Cleaning up...")
+    sys.exit(0)
+
+def restart_script():
+    """Restart the script"""
+    print("\nRestarting script...")
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
+
+def run_monitor():
+    """Main monitoring function"""
     url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
     # Telegram configuration
-    TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"  # Replace with your bot token
-    TELEGRAM_CHAT_ID = "-1002393083645"      # Replace with your chat ID
+    TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"
+    TELEGRAM_CHAT_ID = "-1002393083645"
     
     headers = {
         'accept': 'application/json, text/plain, */*',
@@ -246,7 +262,11 @@ if __name__ == '__main__':
     # Proxy rotation state
     current_proxy_index = -1  # -1 means no proxy
     last_proxy_switch_time = 0
-    PROXY_TIMEOUT = 300  # 3 minutes in seconds
+    PROXY_TIMEOUT = 180  # 3 minutes in seconds
+    
+    # Error tracking
+    consecutive_errors = 0
+    MAX_CONSECUTIVE_ERRORS = 5
     
     while True:
         try:
@@ -318,10 +338,49 @@ if __name__ == '__main__':
                             print("No new posts detected")
                 except json.JSONDecodeError:
                     print("Could not parse response body as JSON")
+                    consecutive_errors += 1
+            
+            # Reset error counter on successful request
+            consecutive_errors = 0
             
             print("\nWaiting 1 second before next request...")
             time.sleep(1)
             
         except Exception as e:
             print(f"Error occurred: {str(e)}")
-            time.sleep(5)  # Still wait 5 seconds even if there's an error
+            consecutive_errors += 1
+            
+            # If we've had too many consecutive errors, restart the script
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                print(f"\nToo many consecutive errors ({consecutive_errors}). Restarting script...")
+                restart_script()
+            
+            time.sleep(5)  # Wait 5 seconds before retrying
+
+if __name__ == '__main__':
+    # Set up signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Register cleanup function
+    atexit.register(lambda: print("\nScript shutting down..."))
+    
+    # Create a PID file
+    pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
+    with open(pid_file, 'w') as f:
+        f.write(str(os.getpid()))
+    
+    print(f"Script started with PID {os.getpid()}")
+    print("Press Ctrl+C to stop")
+    
+    try:
+        run_monitor()
+    except KeyboardInterrupt:
+        print("\nScript stopped by user")
+    except Exception as e:
+        print(f"\nFatal error: {str(e)}")
+        restart_script()
+    finally:
+        # Clean up PID file
+        if os.path.exists(pid_file):
+            os.remove(pid_file)
