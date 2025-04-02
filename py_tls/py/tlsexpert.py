@@ -183,9 +183,6 @@ def process_post(post, current_time):
         
         # Create message text with timestamps
         message_text = f"🆕 New Post Detected!\n"
-        message_text += f"Post created: {post_time}\n"
-        message_text += f"Alert sent: {current_time}\n"
-        message_text += f"Delay: {time_diff_seconds:.2f} seconds\n\n"
         
         # Handle content
         if content:
