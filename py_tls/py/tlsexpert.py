@@ -96,7 +96,7 @@ def send_telegram_message(bot_token, chat_ids, text, media_url=None, inline_keyb
     if not isinstance(chat_ids, list):
         chat_ids = [chat_ids]
     
-    success = False
+    success_count = 0
     for chat_id in chat_ids:
         data = {
             'chat_id': chat_id,
@@ -131,11 +131,12 @@ def send_telegram_message(bot_token, chat_ids, text, media_url=None, inline_keyb
             response = requests.post(endpoint, data=data)
             response.raise_for_status()
             logger.info(f"Successfully sent to Telegram chat {chat_id}")
-            success = True
+            success_count += 1
         except Exception as e:
             logger.error(f"Error sending Telegram message to chat {chat_id}: {str(e)}")
     
-    return success
+    # Return True only if all messages were sent successfully
+    return success_count == len(chat_ids)
 
 def clean_html(html_content):
     # Remove HTML tags but preserve line breaks
