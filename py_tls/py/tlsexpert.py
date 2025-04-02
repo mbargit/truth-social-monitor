@@ -12,6 +12,20 @@ import sys
 import signal
 import subprocess
 import atexit
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Set up logging
+log_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.log')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5),  # 10MB per file, keep 5 files
+        logging.StreamHandler()  # Also print to console
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Set the name of our shared library
 lib_name = 'tlsexpert'
@@ -116,10 +130,10 @@ def send_telegram_message(bot_token, chat_ids, text, media_url=None, inline_keyb
         try:
             response = requests.post(endpoint, data=data)
             response.raise_for_status()
-            print(f"Successfully sent to Telegram chat {chat_id}")
+            logger.info(f"Successfully sent to Telegram chat {chat_id}")
             success = True
         except Exception as e:
-            print(f"Error sending Telegram message to chat {chat_id}: {str(e)}")
+            logger.error(f"Error sending Telegram message to chat {chat_id}: {str(e)}")
     
     return success
 
@@ -152,30 +166,30 @@ def process_post(post, current_time):
         post_id = post.get('id')
         post_time = post.get('created_at')
         
-        print(f"\nProcessing post {post_id}...")
-        print(f"Post time: {post_time}")
-        print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
+        logger.info(f"\nProcessing post {post_id}...")
+        logger.info(f"Post time: {post_time}")
+        logger.info(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
         
         # Calculate time difference between post creation and alert
         post_datetime = datetime.strptime(post_time.split('.')[0], '%Y-%m-%dT%H:%M:%S')
         alert_datetime = datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S')
         time_diff_seconds = (alert_datetime - post_datetime).total_seconds()
         
-        print(f"Time difference: {time_diff_seconds:.2f} seconds")
+        logger.info(f"Time difference: {time_diff_seconds:.2f} seconds")
         
         # Only process posts created within the last 20 seconds
         if time_diff_seconds > 20:
-            print(f"Post is too old ({time_diff_seconds:.2f} seconds). Skipping alert.")
+            logger.info(f"Post is too old ({time_diff_seconds:.2f} seconds). Skipping alert.")
             return
         
         # Safely check for card data
         card = post.get('card')
-        print(f"Has card: {card is not None}")
+        logger.info(f"Has card: {card is not None}")
         if card:
-            print(f"Card type: {card.get('type', 'unknown')}")
-            print(f"Card URL: {card.get('url', 'unknown')}")
+            logger.info(f"Card type: {card.get('type', 'unknown')}")
+            logger.info(f"Card URL: {card.get('url', 'unknown')}")
         
-        print(f"Has media: {'media_attachments' in post and len(post.get('media_attachments', [])) > 0}")
+        logger.info(f"Has media: {'media_attachments' in post and len(post.get('media_attachments', [])) > 0}")
         
         # Prepare message content
         content = clean_html(post.get('content', ''))
@@ -227,22 +241,22 @@ def process_post(post, current_time):
         
         # Send to all Telegram chats
         if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS, message_text, media_url, inline_keyboard):
-            print("Successfully sent to all Telegram chats")
+            logger.info("Successfully sent to all Telegram chats")
         else:
-            print("Failed to send to one or more Telegram chats")
+            logger.warning("Failed to send to one or more Telegram chats")
             
     except Exception as e:
-        print(f"Error processing post: {str(e)}")
-        print(f"Post data: {json.dumps(post, indent=2)}")
+        logger.error(f"Error processing post: {str(e)}")
+        logger.error(f"Post data: {json.dumps(post, indent=2)}")
 
 def signal_handler(signum, frame):
     """Handle termination signals gracefully"""
-    print(f"\nReceived signal {signum}. Cleaning up...")
+    logger.info(f"Received signal {signum}. Cleaning up...")
     sys.exit(0)
 
 def restart_script():
     """Restart the script"""
-    print("\nRestarting script...")
+    logger.info("Restarting script...")
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
@@ -273,10 +287,10 @@ def run_monitor():
         proxies = [line.strip() for line in f if line.strip()]
 
     if not proxies:
-        print("No proxies found in proxies.txt")
-        exit(1)
+        logger.error("No proxies found in proxies.txt")
+        sys.exit(1)
 
-    print(f"Loaded {len(proxies)} proxies")
+    logger.info(f"Loaded {len(proxies)} proxies")
 
     # Store the most recent post ID we've seen
     last_seen_id = None
@@ -296,7 +310,7 @@ def run_monitor():
             
             # Determine if we should switch back to no proxy
             if current_proxy_index >= 0 and time.time() - last_proxy_switch_time >= PROXY_TIMEOUT:
-                print("\nSwitching back to no proxy after timeout...")
+                logger.info("Switching back to no proxy after timeout...")
                 current_proxy_index = -1
             
             # Prepare proxy URL if needed
@@ -305,26 +319,26 @@ def run_monitor():
                 proxy = proxies[current_proxy_index]
                 host, port, username, password = proxy.split(':')
                 proxy_url = f"http://{username}:{password}@{host}:{port}"
-                print(f"\nUsing proxy: {host}:{port}")
+                logger.info(f"Using proxy: {host}:{port}")
             else:
-                print("\nUsing no proxy")
+                logger.info("Using no proxy")
             
-            print(f"Making request at {current_time}")
+            logger.info(f"Making request at {current_time}")
             
             res = request(url, "GET", "Chrome_83", proxy_url, "", headers, 5000, True)
             if 'status' in res:
-                print(f"Status Code: {res['status']}")
+                logger.info(f"Status Code: {res['status']}")
                 
                 # Handle rate limiting (429)
                 if res['status'] == 429:
-                    print("Rate limited detected, switching to next proxy...")
+                    logger.warning("Rate limited detected, switching to next proxy...")
                     current_proxy_index = (current_proxy_index + 1) % len(proxies)
                     last_proxy_switch_time = time.time()
                     continue  # Retry immediately with new proxy
                 
                 # Handle other error status codes
                 if res['status'] == 7:
-                    print("Status code 7 detected, switching to next proxy...")
+                    logger.warning("Status code 7 detected, switching to next proxy...")
                     current_proxy_index = (current_proxy_index + 1) % len(proxies)
                     last_proxy_switch_time = time.time()
                     continue  # Retry immediately with new proxy
@@ -334,18 +348,18 @@ def run_monitor():
                 try:
                     posts = json.loads(res['body'])
                     if isinstance(posts, list) and posts:
-                        print(f"\nProcessing {len(posts)} posts...")
+                        logger.info(f"Processing {len(posts)} posts...")
                         
                         # Get the current most recent post ID
                         current_most_recent_id = posts[0].get('id')
                         
                         if last_seen_id is None:
                             # First run - just store the most recent ID
-                            print(f"First run - storing most recent ID: {current_most_recent_id}")
+                            logger.info(f"First run - storing most recent ID: {current_most_recent_id}")
                             last_seen_id = current_most_recent_id
                         elif current_most_recent_id != last_seen_id:
                             # New posts detected - process all posts up to the last seen ID
-                            print(f"New posts detected! Processing posts from {current_most_recent_id} to {last_seen_id}")
+                            logger.info(f"New posts detected! Processing posts from {current_most_recent_id} to {last_seen_id}")
                             
                             # Process all posts until we hit the last seen ID
                             for post in posts:
@@ -357,24 +371,24 @@ def run_monitor():
                             # Update the last seen ID
                             last_seen_id = current_most_recent_id
                         else:
-                            print("No new posts detected")
+                            logger.info("No new posts detected")
                 except json.JSONDecodeError:
-                    print("Could not parse response body as JSON")
+                    logger.error("Could not parse response body as JSON")
                     consecutive_errors += 1
             
             # Reset error counter on successful request
             consecutive_errors = 0
             
-            print("\nWaiting 1 second before next request...")
+            logger.info("Waiting 1 second before next request...")
             time.sleep(1)
             
         except Exception as e:
-            print(f"Error occurred: {str(e)}")
+            logger.error(f"Error occurred: {str(e)}")
             consecutive_errors += 1
             
             # If we've had too many consecutive errors, restart the script
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
-                print(f"\nToo many consecutive errors ({consecutive_errors}). Restarting script...")
+                logger.error(f"Too many consecutive errors ({consecutive_errors}). Restarting script...")
                 restart_script()
             
             time.sleep(5)  # Wait 5 seconds before retrying
@@ -385,22 +399,22 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Register cleanup function
-    atexit.register(lambda: print("\nScript shutting down..."))
+    atexit.register(lambda: logger.info("Script shutting down..."))
     
     # Create a PID file
     pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
     with open(pid_file, 'w') as f:
         f.write(str(os.getpid()))
     
-    print(f"Script started with PID {os.getpid()}")
-    print("Press Ctrl+C to stop")
+    logger.info(f"Script started with PID {os.getpid()}")
+    logger.info("Press Ctrl+C to stop")
     
     try:
         run_monitor()
     except KeyboardInterrupt:
-        print("\nScript stopped by user")
+        logger.info("Script stopped by user")
     except Exception as e:
-        print(f"\nFatal error: {str(e)}")
+        logger.error(f"Fatal error: {str(e)}")
         restart_script()
     finally:
         # Clean up PID file
