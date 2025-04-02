@@ -196,7 +196,7 @@ def process_post(post, current_time):
         # Create inline keyboard with Truth Social link
         inline_keyboard = [[{
             'text': '🔗 View on Truth Social',
-            'url': f'https://truthsocial.com/@trickzy/posts/{post_id}'
+            'url': f'https://truthsocial.com/@realDonaldTrump/posts/{post_id}'
         }]]
         
         # Send to Telegram
