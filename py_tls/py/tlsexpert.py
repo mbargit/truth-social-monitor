@@ -66,45 +66,54 @@ def download(url, method, cHello, proxy, body, headers, timeout, followRedirects
       value = value.encode('utf-8')
   return json.loads(value.decode())
 
-def send_telegram_message(bot_token, chat_id, text, media_url=None, inline_keyboard=None):
+def send_telegram_message(bot_token, chat_ids, text, media_url=None, inline_keyboard=None):
+    """Send a message to multiple Telegram chats"""
     base_url = f"https://api.telegram.org/bot{bot_token}"
     
-    data = {
-        'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'HTML'
-    }
+    # Ensure chat_ids is a list
+    if not isinstance(chat_ids, list):
+        chat_ids = [chat_ids]
     
-    if media_url:
-        # If there's media, send it as a photo/video
-        if media_url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-            endpoint = f"{base_url}/sendPhoto"
-            data['photo'] = media_url
-            data['caption'] = text
-        elif media_url.lower().endswith(('.mp4', '.mov', '.avi')):
-            endpoint = f"{base_url}/sendVideo"
-            data['video'] = media_url
-            data['caption'] = text
+    success = False
+    for chat_id in chat_ids:
+        data = {
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': 'HTML'
+        }
+        
+        if media_url:
+            # If there's media, send it as a photo/video
+            if media_url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                endpoint = f"{base_url}/sendPhoto"
+                data['photo'] = media_url
+                data['caption'] = text
+            elif media_url.lower().endswith(('.mp4', '.mov', '.avi')):
+                endpoint = f"{base_url}/sendVideo"
+                data['video'] = media_url
+                data['caption'] = text
+            else:
+                # If media type is unknown, send as text with link
+                endpoint = f"{base_url}/sendMessage"
+                data['text'] = f"{text}\n\nMedia: {media_url}"
         else:
-            # If media type is unknown, send as text with link
             endpoint = f"{base_url}/sendMessage"
-            data['text'] = f"{text}\n\nMedia: {media_url}"
-    else:
-        endpoint = f"{base_url}/sendMessage"
+        
+        # Add inline keyboard if provided
+        if inline_keyboard:
+            data['reply_markup'] = json.dumps({
+                'inline_keyboard': inline_keyboard
+            })
+        
+        try:
+            response = requests.post(endpoint, data=data)
+            response.raise_for_status()
+            print(f"Successfully sent to Telegram chat {chat_id}")
+            success = True
+        except Exception as e:
+            print(f"Error sending Telegram message to chat {chat_id}: {str(e)}")
     
-    # Add inline keyboard if provided
-    if inline_keyboard:
-        data['reply_markup'] = json.dumps({
-            'inline_keyboard': inline_keyboard
-        })
-    
-    try:
-        response = requests.post(endpoint, data=data)
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        print(f"Error sending Telegram message: {str(e)}")
-        return False
+    return success
 
 def clean_html(html_content):
     # Remove HTML tags but preserve line breaks
@@ -139,6 +148,18 @@ def process_post(post, current_time):
         print(f"Post time: {post_time}")
         print(f"Content: {post.get('content', '')[:100]}...")  # First 100 chars
         
+        # Calculate time difference between post creation and alert
+        post_datetime = datetime.strptime(post_time.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+        alert_datetime = datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S')
+        time_diff_seconds = (alert_datetime - post_datetime).total_seconds()
+        
+        print(f"Time difference: {time_diff_seconds:.2f} seconds")
+        
+        # Only process posts created within the last 20 seconds
+        if time_diff_seconds > 20:
+            print(f"Post is too old ({time_diff_seconds:.2f} seconds). Skipping alert.")
+            return
+        
         # Safely check for card data
         card = post.get('card')
         print(f"Has card: {card is not None}")
@@ -156,7 +177,7 @@ def process_post(post, current_time):
         message_text = f"🆕 New Post Detected!\n"
         message_text += f"Post created: {post_time}\n"
         message_text += f"Alert sent: {current_time}\n"
-        message_text += f"Delay: {datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S') - datetime.strptime(post_time.split('.')[0], '%Y-%m-%dT%H:%M:%S')}\n\n"
+        message_text += f"Delay: {time_diff_seconds:.2f} seconds\n\n"
         
         # Handle content
         if content:
@@ -199,11 +220,11 @@ def process_post(post, current_time):
             'url': f'https://truthsocial.com/@realDonaldTrump/posts/{post_id}'
         }]]
         
-        # Send to Telegram
-        if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, message_text, media_url, inline_keyboard):
-            print("Successfully sent to Telegram")
+        # Send to all Telegram chats
+        if send_telegram_message(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS, message_text, media_url, inline_keyboard):
+            print("Successfully sent to all Telegram chats")
         else:
-            print("Failed to send to Telegram")
+            print("Failed to send to one or more Telegram chats")
             
     except Exception as e:
         print(f"Error processing post: {str(e)}")
@@ -226,7 +247,12 @@ def run_monitor():
     
     # Telegram configuration
     TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"
-    TELEGRAM_CHAT_ID = "-1002393083645"
+    # List of three different chat IDs
+    TELEGRAM_CHAT_IDS = [
+        "-1002393083645",  # First chat ID
+        "-1002589438564",  # Second chat ID (replace with your actual chat ID)
+        "-1002314755584"   # Third chat ID (replace with your actual chat ID)
+    ]
     
     headers = {
         'accept': 'application/json, text/plain, */*',
