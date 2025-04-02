@@ -243,15 +243,15 @@ def restart_script():
 
 def run_monitor():
     """Main monitoring function"""
-    url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
     # Telegram configuration
     TELEGRAM_BOT_TOKEN = "7841049730:AAHUvJpCgaEClEvWVqHw-MlKwxAwKze5n-k"
     # List of three different chat IDs
     TELEGRAM_CHAT_IDS = [
         "-1002393083645",  # First chat ID
-        "-1002589438564",  # Second chat ID (replace with your actual chat ID)
-        "-1002314755584"   # Third chat ID (replace with your actual chat ID)
+        # "-1002589438564",  # Second chat ID (replace with your actual chat ID)
+        # "-1002314755584"   # Third chat ID (replace with your actual chat ID)
     ]
     
     headers = {
