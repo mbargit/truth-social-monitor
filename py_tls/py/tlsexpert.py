@@ -248,7 +248,7 @@ def restart_script():
 
 def run_monitor():
     """Main monitoring function"""
-    url = "https://truthsocial.com/api/v1/accounts/114253527119250506/statuses?exclude_replies=true&only_replies=false&with_muted=true"
+    url = "https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&only_replies=false&with_muted=true"
     
     headers = {
         'accept': 'application/json, text/plain, */*',
