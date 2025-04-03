@@ -14,6 +14,8 @@ import subprocess
 import atexit
 import logging
 from logging.handlers import RotatingFileHandler
+import daemon
+import daemon.pidfile
 
 # Set up logging
 log_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.log')
@@ -253,6 +255,10 @@ def process_post(post, current_time):
 def signal_handler(signum, frame):
     """Handle termination signals gracefully"""
     logger.info(f"Received signal {signum}. Cleaning up...")
+    # Clean up PID file
+    pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
+    if os.path.exists(pid_file):
+        os.remove(pid_file)
     sys.exit(0)
 
 def restart_script():
@@ -395,15 +401,28 @@ def run_monitor():
             time.sleep(5)  # Wait 5 seconds before retrying
 
 if __name__ == '__main__':
-    # Set up signal handlers
+    # Set up signal handlers for all termination signals
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
     
-    # Register cleanup function
-    atexit.register(lambda: logger.info("Script shutting down..."))
-    
-    # Create a PID file
+    # Create PID file path
     pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
+    
+    # Check if script is already running
+    if os.path.exists(pid_file):
+        with open(pid_file, 'r') as f:
+            old_pid = int(f.read().strip())
+            try:
+                # Check if process is still running
+                os.kill(old_pid, 0)
+                logger.error(f"Script is already running with PID {old_pid}")
+                sys.exit(1)
+            except OSError:
+                # Process not running, remove stale PID file
+                os.remove(pid_file)
+    
+    # Write current PID to file
     with open(pid_file, 'w') as f:
         f.write(str(os.getpid()))
     
@@ -411,7 +430,19 @@ if __name__ == '__main__':
     logger.info("Press Ctrl+C to stop")
     
     try:
-        run_monitor()
+        # Run the monitor in a daemon context
+        with daemon.DaemonContext(
+            working_directory=os.path.dirname(os.path.realpath(__file__)),
+            umask=0o002,
+            pidfile=daemon.pidfile.PIDLockFile(pid_file),
+            detach_process=True,
+            signal_map={
+                signal.SIGTERM: signal_handler,
+                signal.SIGINT: signal_handler,
+                signal.SIGHUP: signal_handler
+            }
+        ):
+            run_monitor()
     except KeyboardInterrupt:
         logger.info("Script stopped by user")
     except Exception as e:
