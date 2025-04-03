@@ -401,11 +401,6 @@ def run_monitor():
             time.sleep(5)  # Wait 5 seconds before retrying
 
 if __name__ == '__main__':
-    # Set up signal handlers for all termination signals
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGHUP, signal_handler)
-    
     # Create PID file path
     pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
     
@@ -426,23 +421,16 @@ if __name__ == '__main__':
     with open(pid_file, 'w') as f:
         f.write(str(os.getpid()))
     
+    # Set up signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
+    
     logger.info(f"Script started with PID {os.getpid()}")
     logger.info("Press Ctrl+C to stop")
     
     try:
-        # Run the monitor in a daemon context
-        with daemon.DaemonContext(
-            working_directory=os.path.dirname(os.path.realpath(__file__)),
-            umask=0o002,
-            pidfile=daemon.pidfile.PIDLockFile(pid_file),
-            detach_process=True,
-            signal_map={
-                signal.SIGTERM: signal_handler,
-                signal.SIGINT: signal_handler,
-                signal.SIGHUP: signal_handler
-            }
-        ):
-            run_monitor()
+        run_monitor()
     except KeyboardInterrupt:
         logger.info("Script stopped by user")
     except Exception as e:
