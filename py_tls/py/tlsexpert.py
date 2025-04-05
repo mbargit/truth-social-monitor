@@ -254,12 +254,19 @@ def process_post(post, current_time):
 
 def signal_handler(signum, frame):
     """Handle termination signals gracefully"""
-    logger.info(f"Received signal {signum}. Cleaning up...")
-    # Clean up PID file
-    pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
-    if os.path.exists(pid_file):
-        os.remove(pid_file)
-    sys.exit(0)
+    if signum == signal.SIGINT:
+        # Ignore Ctrl+C, just log it
+        logger.info("Received Ctrl+C. Script will continue running in the background.")
+        logger.info("To stop the script, use: kill $(cat monitor.pid)")
+        return
+    else:
+        # For other signals, clean up and exit
+        logger.info(f"Received signal {signum}. Cleaning up...")
+        # Clean up PID file
+        pid_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'monitor.pid')
+        if os.path.exists(pid_file):
+            os.remove(pid_file)
+        sys.exit(0)
 
 def restart_script():
     """Restart the script"""
@@ -422,21 +429,23 @@ if __name__ == '__main__':
         f.write(str(os.getpid()))
     
     # Set up signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGHUP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
+    signal.signal(signal.SIGTERM, signal_handler)  # Termination signal
+    signal.signal(signal.SIGHUP, signal_handler)   # Hangup signal
     
     logger.info(f"Script started with PID {os.getpid()}")
-    logger.info("Press Ctrl+C to stop")
+    logger.info("Press Ctrl+C to detach (script will continue running)")
+    logger.info("To stop the script, use: kill $(cat monitor.pid)")
     
     try:
         run_monitor()
     except KeyboardInterrupt:
-        logger.info("Script stopped by user")
+        # This should never happen now, but just in case
+        logger.info("Script will continue running in the background")
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}")
         restart_script()
     finally:
-        # Clean up PID file
-        if os.path.exists(pid_file):
+        # Clean up PID file only if we're actually exiting
+        if os.path.exists(pid_file) and signal.SIGINT not in [signal.SIGINT]:
             os.remove(pid_file)
