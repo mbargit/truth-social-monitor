@@ -8,15 +8,21 @@ User=root
 WorkingDirectory=/root/truth-social-monitor/py_tls/py
 ExecStart=/usr/bin/python3 /root/truth-social-monitor/py_tls/py/tlsexpert.py
 Restart=always
-RestartSec=5
+# Wait longer between restarts to avoid collisions
+RestartSec=10
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=tlsmonitor
 Environment=PYTHONUNBUFFERED=1
 
+# Kill any existing instances before starting
+ExecStartPre=/bin/bash -c 'pkill -f "python3 .*tlsexpert\.py" || true'
+# Remove any stale PID or lock files
+ExecStartPre=/bin/bash -c 'rm -f /root/truth-social-monitor/py_tls/py/monitor.pid /root/truth-social-monitor/py_tls/py/monitor.lock || true'
+
 # Advanced restarting configuration
-StartLimitInterval=200
-StartLimitBurst=10
+StartLimitInterval=500
+StartLimitBurst=5
 RestartForceExitStatus=SIGPIPE SIGILL SIGABRT
 RestartPreventExitStatus=100
 
