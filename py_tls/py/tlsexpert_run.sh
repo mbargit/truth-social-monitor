@@ -31,35 +31,34 @@ run_script() {
     echo "$(date) - Script started with PID: $PID" >> "$LOG_FILE"
     echo "Script started with PID: $PID"
     echo $PID > "$SCRIPT_DIR/monitor.pid"
-    echo "Watchdog is now monitoring the script. You can safely exit this terminal."
-    echo "To check logs: tail -f $SCRIPT_DIR/monitor.log"
-    echo "To stop the script: kill $(cat $SCRIPT_DIR/monitor.pid)"
 }
 
-# Main script controller
-while true; do
-    # Check if the process is running
-    if [ -f "$SCRIPT_DIR/monitor.pid" ]; then
-        PID=$(cat "$SCRIPT_DIR/monitor.pid")
-        if ps -p $PID > /dev/null; then
-            echo "$(date) - Script is already running with PID: $PID" >> "$LOG_FILE"
-            echo "Script is already running with PID: $PID"
-            echo "Watchdog is now monitoring. You can safely exit this terminal."
-            echo "To check logs: tail -f $SCRIPT_DIR/monitor.log"
-            echo "To stop the script: kill $PID"
-        else
-            echo "$(date) - Script is not running (PID: $PID). Restarting..." >> "$LOG_FILE"
-            echo "Script is not running. Restarting..."
-            run_script
-        fi
+# Check if the script is already running
+if [ -f "$SCRIPT_DIR/monitor.pid" ]; then
+    PID=$(cat "$SCRIPT_DIR/monitor.pid")
+    if ps -p $PID > /dev/null; then
+        echo "$(date) - Script is already running with PID: $PID" >> "$LOG_FILE"
+        echo "Script is already running with PID: $PID"
     else
-        echo "$(date) - No PID file found. Starting script..." >> "$LOG_FILE"
-        echo "No PID file found. Starting script..."
+        echo "$(date) - Script is not running (PID: $PID). Starting..." >> "$LOG_FILE"
+        echo "Script is not running. Starting..."
         run_script
     fi
-    
-    # First check is immediate, then background the watchdog process
-    echo "Watchdog running in background. Press Ctrl+C to exit watchdog (script will continue running)."
-    exec nohup "$0" > /dev/null 2>&1 &
-    exit 0
-done 
+else
+    echo "$(date) - No PID file found. Starting script..." >> "$LOG_FILE"
+    echo "No PID file found. Starting script..."
+    run_script
+fi
+
+# Print instructions
+echo ""
+echo "=== TRUTH SOCIAL MONITOR IS RUNNING ==="
+echo "The script is now running in the background and will continue running"
+echo "even if you close this terminal."
+echo ""
+echo "To check logs: tail -f $SCRIPT_DIR/monitor.log"
+echo "To stop the script: kill $(cat $SCRIPT_DIR/monitor.pid)"
+echo ""
+echo "To ensure the script keeps running, we've installed a systemd service"
+echo "that will restart it automatically if it crashes."
+echo "====================================" 
