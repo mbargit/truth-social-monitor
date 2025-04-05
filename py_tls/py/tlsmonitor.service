@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/Users/mbargit/Projects/Solana/truth-social-monitor/py_tls/py
-ExecStart=/root/truth-social-monitor/py_tls/py/venv/bin/python3 tlsexpert.py
+WorkingDirectory=/root/truth-social-monitor/py_tls/py
+ExecStart=/usr/bin/python3 /root/truth-social-monitor/py_tls/py/tlsexpert.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -17,8 +17,7 @@ Environment=PYTHONUNBUFFERED=1
 # Give the service time to start up properly
 TimeoutStartSec=60
 
-# Restart the service if it fails
-StartLimitIntervalSec=600
+# Restart the service on failure
 StartLimitBurst=10
 
 [Install]
